@@ -102,7 +102,7 @@ describe("MyToken", function() {
     it('should permit', async function() {
         const { token, proxy, user1, user2 } = await loadFixture(deploy);
 
-        const tokenAddr = token.address;
+        const tokenAddr = await token.getAddress();
         const owner = user1.address;
         const spender = user2.address;
         const amount = 15;
@@ -120,5 +120,28 @@ describe("MyToken", function() {
         );
 
         console.log(result);
-    })
+
+        const tx = await proxy.connect(user2).doSend(
+            tokenAddr,
+            owner,
+            spender,
+            amount,
+            deadline,
+            result.v,
+            result.r,
+            result.s
+        ); 
+        await tx.wait();
+
+        console.log("NONCES", await token.nonces(owner));
+
+        console.log("ALLOWANCE BEFORE", await token.allowance(owner, spender)); 
+
+        const transferTx = await token.connect(user2).transferFrom(owner, spender, 10);
+        await transferTx.wait();
+
+        await expect(transferTx).to.changeTokenBalance(token, user2, 10);
+
+        console.log("ALLOWANCE AFTER", await token.allowance(owner, spender));
+    });
 });
