@@ -5,4 +5,4 @@ Using `ERC20.sol`, `IERC20.sol`, `IERC20Metadata.sol` contracts from repository 
 
 Using `Counters.sol`, `ECDSA.sol`, `EIP712.sol` contracts from OpenZeppelin.
 
-For tests note that `setup.ts` should contain `import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"`.
+For tests note that `setup.ts` should contain `import type { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";`.
