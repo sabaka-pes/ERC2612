@@ -21,3 +21,4 @@ contract MyToken is ERC20, ERC20Permit {
         _mint(to, amount);
     }
 }
+
