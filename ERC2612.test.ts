@@ -1,4 +1,4 @@
-import { loadFixture, ethers, SignerWithAddress } from "./setup";
+import { loadFixture, ethers, SignerWithAddress, expect } from "./setup";
 import type { MyToken, Proxy } from "../typechain-types";
 
 interface ERC2612PermitMessage {
@@ -22,6 +22,70 @@ interface Domain {
     verifyingContract: string;
 }
 
+function splitSignatureToRSV(signature: string): RSV {
+    const r = '0x' + signature.substring(2).substring(0, 64);
+    const s = '0x' + signature.substring(2).substring(64, 128);
+    const v = parseInt(signature.substring(2).substring(128, 130), 16);
+
+    return { r, s, v };
+}
+
+async function signERC2612Permit(
+    token: string,
+    owner: string,
+    spender: string,
+    value: string | number,
+    deadline: number,
+    nonce: number,
+    signer: SignerWithAddress
+): Promise<ERC2612PermitMessage & RSV> {
+    const message: ERC2612PermitMessage = {
+        owner,
+        spender,
+        value,
+        nonce,
+        deadline
+    };
+
+    const domain: Domain = {
+        name: "MyToken",
+        version: "1",
+        chainId: 1337, // hardhat chain id
+        verifyingContract: token
+    };
+
+    const typedData = createTypedERC2612Data(message, domain);
+
+    console.log(typedData);
+
+    const rawSignature = await signer.signTypedData(
+        typedData.domain,
+        typedData.types,
+        typedData.message
+    );
+
+    const sig = splitSignatureToRSV(rawSignature);
+
+    return { ...sig, ...message };
+}
+
+function createTypedERC2612Data(message: ERC2612PermitMessage, domain: Domain) {
+    return {
+        types: {
+            Permit: [
+                { name: "owner", type: "address" },
+                { name: "spender", type: "address" },
+                { name: "value", type: "uint256" },
+                { name: "nonce", type: "uint256" },
+                { name: "deadline", type: "uint256" }
+            ]
+        },
+        primaryType: "Permit",
+        domain,
+        message
+    }
+}
+
 describe("MyToken", function() {
     async function deploy() {
         const [ user1, user2 ] = await ethers.getSigners();
@@ -34,4 +98,27 @@ describe("MyToken", function() {
 
         return { token, proxy, user1, user2 }
     }
+
+    it('should permit', async function() {
+        const { token, proxy, user1, user2 } = await loadFixture(deploy);
+
+        const tokenAddr = token.address;
+        const owner = user1.address;
+        const spender = user2.address;
+        const amount = 15;
+        const deadline = Math.floor(Date.now() / 1000) + 1000;
+        const nonce = 0;
+
+        const result = await signERC2612Permit(
+            tokenAddr,
+            owner,
+            spender,
+            amount,
+            deadline,
+            nonce,
+            user1
+        );
+
+        console.log(result);
+    })
 });
